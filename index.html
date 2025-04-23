@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Digit Span Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        text-align: center;
+      }
+      .container {
+        background-color: #f5f5f5;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      h1 {
+        color: #333;
+      }
+      .info {
+        margin: 20px 0;
+        font-size: 1.2em;
+      }
+      button {
+        background-color: #4CAF50;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1.1em;
+        margin: 10px;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      input {
+        padding: 10px;
+        font-size: 1.1em;
+        width: 200px;
+        margin: 10px;
+      }
+      .sequence {
+        font-size: 2em;
+        margin: 20px 0;
+        min-height: 50px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      th, td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+      }
+      th {
+        background-color: #4CAF50;
+        color: white;
+      }
+      tr:nth-child(even) {
+        background-color: #f2f2f2;
+      }
+      .correct {
+        color: green;
+      }
+      .incorrect {
+        color: red;
+      }
+      .time-control {
+        margin: 20px 0;
+        padding: 10px;
+        background-color: #fff;
+        border-radius: 4px;
+      }
+      .time-control label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      .time-control input[type="range"] {
+        width: 80%;
+        margin: 10px 0;
+      }
+      .time-value {
+        font-size: 1.2em;
+        color: #4CAF50;
+        font-weight: bold;
+      }
+      .mode-control {
+        margin: 20px 0;
+        padding: 10px;
+        background-color: #fff;
+        border-radius: 4px;
+      }
+      .mode-control label {
+        display: inline-block;
+        margin: 0 10px;
+        cursor: pointer;
+      }
+      .mode-control input[type="radio"] {
+        margin-right: 5px;
+      }
+      .digit-control {
+        margin: 20px 0;
+        padding: 10px;
+        background-color: #fff;
+        border-radius: 4px;
+      }
+      .digit-control label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      .digit-control input[type="number"] {
+        width: 60px;
+        margin: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Digit Span Test</h1>
+      
+      <div class="info">
+        <div id="testType">Forward Digit Span</div>
+        <div>Current Level: <span id="currentLevel">1</span> digits</div>
+        <div>Forward Score: <span id="forwardScore">0</span> | Backward Score: <span id="backwardScore">0</span></div>
+      </div>
+
+      <div class="mode-control">
+        <label>
+          <input type="radio" name="testMode" value="forward" checked> Forward Only
+        </label>
+        <label>
+          <input type="radio" name="testMode" value="backward"> Backward Only
+        </label>
+        <label>
+          <input type="radio" name="testMode" value="both"> Both
+        </label>
+      </div>
+
+      <div class="time-control">
+        <label for="timeSlider">Display Time (seconds per digit):</label>
+        <input type="range" id="timeSlider" min="0.001" max="2" step="0.001" value="1">
+        <div class="time-value"><span id="timeValue">1.000</span> seconds</div>
+      </div>
+
+      <div class="digit-control">
+        <label for="digitInput">Number of Digits:</label>
+        <input type="number" id="digitInput" min="1" max="20" value="1" style="width: 60px;">
+        <button onclick="setDigitNumber()">Set</button>
+      </div>
+
+      <div id="startButton">
+        <button onclick="startNewRound()">Start New Round</button>
+      </div>
+
+      <div id="sequence" class="sequence"></div>
+
+      <div id="inputSection" style="display: none;">
+        <input type="text" id="userInput" placeholder="Enter the sequence">
+        <button onclick="checkAnswer()">Submit</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Sequence</th>
+            <th>Your Input</th>
+            <th>Correct</th>
+            <th>Length</th>
+            <th>Duration</th>
+          </tr>
+        </thead>
+        <tbody id="historyTable"></tbody>
+      </table>
+    </div>
+
+    <script>
+      let currentDigit = 1;
+      let sequence = [];
+      let isForward = true;
+      let isShowing = false;
+      let history = [];
+      let score = { forward: 0, backward: 0 };
+      let displayTime = 1; // Default display time in seconds
+      let testMode = 'forward'; // Default test mode
+
+      function setDigitNumber() {
+        const newDigit = parseInt(document.getElementById('digitInput').value);
+        if (newDigit >= 1 && newDigit <= 20) {
+          currentDigit = newDigit;
+          document.getElementById('currentLevel').textContent = currentDigit;
+        } else {
+          alert('Please enter a number between 1 and 20');
+          document.getElementById('digitInput').value = currentDigit;
+        }
+      }
+
+      // Update time value display when slider changes
+      document.getElementById('timeSlider').addEventListener('input', function(e) {
+        displayTime = parseFloat(e.target.value);
+        document.getElementById('timeValue').textContent = displayTime.toFixed(3);
+      });
+
+      // Update test mode when radio buttons change
+      document.querySelectorAll('input[name="testMode"]').forEach(radio => {
+        radio.addEventListener('change', function(e) {
+          testMode = e.target.value;
+          isForward = testMode === 'forward' || testMode === 'both';
+          document.getElementById('testType').textContent = 
+            testMode === 'both' ? 'Forward Digit Span' : 
+            testMode === 'forward' ? 'Forward Digit Span' : 'Backward Digit Span';
+        });
+      });
+
+      function generateSequence(length) {
+        return Array.from({ length }, () => Math.floor(Math.random() * 10));
+      }
+
+      function startNewRound() {
+        sequence = generateSequence(currentDigit);
+        document.getElementById('sequence').textContent = sequence.join(' ');
+        document.getElementById('startButton').style.display = 'none';
+        document.getElementById('inputSection').style.display = 'none';
+        isShowing = true;
+
+        setTimeout(() => {
+          document.getElementById('sequence').textContent = '';
+          document.getElementById('inputSection').style.display = 'block';
+          document.getElementById('userInput').value = '';
+          document.getElementById('userInput').focus();
+          isShowing = false;
+        }, displayTime * 1000 * currentDigit);
+      }
+
+      function checkAnswer() {
+        const userInput = document.getElementById('userInput').value;
+        const userSequence = userInput.split('').map(Number);
+        const isCorrect = isForward
+          ? JSON.stringify(userSequence) === JSON.stringify(sequence)
+          : JSON.stringify(userSequence) === JSON.stringify([...sequence].reverse());
+
+        history.push({
+          type: isForward ? 'Forward' : 'Backward',
+          sequence: sequence.join(''),
+          userInput: userInput,
+          correct: isCorrect,
+          length: currentDigit,
+          duration: (displayTime * currentDigit).toFixed(3)
+        });
+
+        updateHistoryTable();
+
+        if (isCorrect) {
+          if (testMode === 'both') {
+            if (isForward) {
+              score.forward = currentDigit;
+              isForward = false;
+              document.getElementById('testType').textContent = 'Backward Digit Span';
+            } else {
+              score.backward = currentDigit;
+              isForward = true;
+              document.getElementById('testType').textContent = 'Forward Digit Span';
+            }
+          }
+        } else {
+          if (testMode === 'both') {
+            isForward = true;
+            document.getElementById('testType').textContent = 'Forward Digit Span';
+          }
+        }
+
+        document.getElementById('currentLevel').textContent = currentDigit;
+        document.getElementById('forwardScore').textContent = score.forward;
+        document.getElementById('backwardScore').textContent = score.backward;
+        document.getElementById('startButton').style.display = 'block';
+        document.getElementById('inputSection').style.display = 'none';
+      }
+
+      function updateHistoryTable() {
+        const tbody = document.getElementById('historyTable');
+        tbody.innerHTML = '';
+        
+        history.forEach(entry => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${entry.type}</td>
+            <td>${entry.sequence}</td>
+            <td>${entry.userInput}</td>
+            <td class="${entry.correct ? 'correct' : 'incorrect'}">${entry.correct ? '✓' : '✗'}</td>
+            <td>${entry.length}</td>
+            <td>${entry.duration} s</td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      // Add event listener for Enter key
+      document.getElementById('userInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          checkAnswer();
+        }
+      });
+    </script>
+  </body>
+</html> 
